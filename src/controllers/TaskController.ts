@@ -1,7 +1,18 @@
 // src/controllers/TaskController.ts
 
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { TaskService } from "../services/TaskService";
+import {
+  CreateTaskResponse,
+  GetAllTaskResponse,
+} from "../responses/taskResponses";
+import {
+  GetAllTaskRequestParams,
+  TaskRequestBody,
+} from "../request/taskRequest";
+import { Task } from "../interfaces/taskIntefaces";
+import getErrorMessagesFromValidationResult from "../helper/generalFunc";
+import { TASK_NOT_FOUND } from "../const/message";
 import { validationResult } from "express-validator";
 
 const taskService = new TaskService();
@@ -9,17 +20,30 @@ const taskService = new TaskService();
 export class TaskController {
   /**
    * Get a list of all tasks.
-   * @param req - Express request object
-   * @param res - Express response object
+   *
+   * @param req - query parameters object containing :
+   * page - the page number for pagination and 1 for default value
+   * pageSize - The number of tasks per page and 10 for default value
+   * sortby -  - The field to sort by (title or created_at) default value is created_at.
+   * sortOrder - The sorting order (ASC or DESC or optional).
+   * completed - Filter tasks by completion status (optional).
+   * @param res - response object containing paginated tasks(id,title,description,completed,created_at,updated_at,deleted_at),total count,current page, the size of each page.
+   * @param next - next function for pass the error to errorhandler as a middleware
    */
-  async getAllTasks(req: Request, res: Response) {
-    const page = parseInt(req.query.page as string) || 1;
-    const pageSize = parseInt(req.query.pageSize as string) || 10;
-
-    const sortBy = req.query.sortBy as string; // Get sorting field from query parameter
-    const sortOrder = req.query.sortOrder as string; // Get sorting order from query parameter
-
-    const completed = req.query.completed === "true"; // Convert string to boolean
+  async getAllTasks(
+    req: Request<{}, {}, {}, GetAllTaskRequestParams>,
+    res: Response<GetAllTaskResponse>,
+    next: NextFunction
+  ) {
+    const {
+      page = 1,
+      pageSize = 10,
+      sortBy = "created_at",
+      sortOrder = "DESC",
+      completed,
+    } = req.query;
+    const completedQuery =
+      completed === "true" ? true : completed === "false" ? false : undefined;
 
     try {
       const tasks = await taskService.getAllTasks(
@@ -27,61 +51,86 @@ export class TaskController {
         pageSize,
         sortBy,
         sortOrder,
-        completed
+        completedQuery
       );
       res.json(tasks);
     } catch (error) {
-      res.status(500).json({ error: "Internal Server Error" });
+      next(error);
     }
   }
 
   /**
    * Create a new task.
-   * @param req - Express request object
-   * @param res - Express response object
+   * @param req - request body that contain title(required string), description(required string), and completion(optional boolean) status.
+   * @param res - response object that contain a message and data that contain following properties:
+   * created_at
+   * updated_at
+   * id
+   * deleted_at
+   * title
+   * description
+   * completed
    */
-  async createTask(req: Request, res: Response) {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+  async createTask(
+    req: Request<{}, {}, TaskRequestBody>,
+    res: Response<CreateTaskResponse | { message: string }>,
+    next: NextFunction
+  ) {
+    const validationResultMessage = getErrorMessagesFromValidationResult(req);
+    if (validationResultMessage) {
+      return res.status(400).json({ message: validationResultMessage[0] });
     }
-    const { title, description, completed } = req.body;
     try {
-      const task = await taskService.createTask(title, description, completed);
+      const taskToCreate = req.body;
+      const task = await taskService.createTask(taskToCreate);
       res.status(201).json(task);
     } catch (error) {
-      res.status(500).json({ error: (error as Error).message });
+      next(error);
     }
   }
 
   /**
    * Get a specific task by ID.
-   * @param req - Express request object with task ID in params
-   * @param res - Express response object
+   * @param req - request object with task ID in params
+   * @param res - Express response object contain following properties:
+   *  created_at
+   * updated_at
+   * id
+   * deleted_at
+   * title
+   * description
+   * completed
    */
-  async getTaskById(req: Request, res: Response) {
+  async getTaskById(
+    req: Request<{ id: string }>,
+    res: Response<Task | { message: string }>,
+    next: NextFunction
+  ) {
     const id = req.params.id;
     try {
       const task = await taskService.getTaskById(id);
-      if (task) {
-        res.json(task);
-      } else {
-        res.status(404).json({ message: "Task not found" });
+      if (!task) {
+        res.status(404).json({ message: TASK_NOT_FOUND });
       }
+      res.json(task);
     } catch (error) {
-      res.status(500).json({ error: (error as Error).message });
+      next(error);
     }
   }
 
   /**
    * Update a task by ID.
-   * @param req - Express request object with task ID in params and updated data in body
-   * @param res - Express response object
+   * @param req - request body object with task ID in params and updated data contain title(required string), description(required string), and completion(optional boolean) status in body
+   * @param res - response object
    */
-  async updateTask(req: Request, res: Response) {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+  async updateTask(
+    req: Request<{ id: string }, {}, TaskRequestBody>,
+    res: Response<CreateTaskResponse | { message: string }>,
+    next: NextFunction
+  ) {
+    const validationResultMessage = getErrorMessagesFromValidationResult(req);
+    if (validationResultMessage) {
+      return res.status(400).json({ message: validationResultMessage[0] });
     }
     const id = req.params.id;
     const updatedTask = req.body;
@@ -89,22 +138,26 @@ export class TaskController {
       const task = await taskService.updateTask(id, updatedTask);
       res.json(task);
     } catch (error) {
-      res.status(500).json({ error: (error as Error).message });
+      next(error);
     }
   }
 
   /**
    * Delete a task by ID.
-   * @param req - Express request object with task ID in params
+   * @param req - request object with task ID in params
    * @param res - Express response object
    */
-  async deleteTask(req: Request, res: Response) {
+  async deleteTask(
+    req: Request<{ id: string }>,
+    res: Response<{ message: string }>,
+    next: NextFunction
+  ) {
     const id = req.params.id;
     try {
       const result = await taskService.deleteTask(id);
       res.json(result);
     } catch (error) {
-      res.status(500).json({ error: (error as Error).message });
+      next(error);
     }
   }
 }

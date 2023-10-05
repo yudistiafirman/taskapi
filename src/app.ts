@@ -12,7 +12,7 @@ app.use(express.json());
 
 app.use(cors());
 
-app.use("/api", v1Router);
+app.use("/api/v1", v1Router);
 
 app.use(notFoundHandler);
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {

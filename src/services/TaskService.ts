@@ -1,16 +1,23 @@
-// src/services/TaskService.ts
+import {
+  TASK_NOT_FOUND,
+  TASK_SUCCESSFULLY_CREATED,
+  TASK_SUCCESSFULLY_DELETED,
+  TASK_SUCCESSFULLY_UPDATED,
+} from "../const/message";
+import { TaskRequestBody } from "../request/taskRequest";
 
 const { Task } = require("../models");
 
 export class TaskService {
   /**
-   * Get a list of all tasks with optional pagination, sorting, and filtering.
-   * @param page - Page number for pagination
-   * @param pageSize - Number of tasks per page
-   * @param sortBy - Field to sort by
-   * @param sortOrder - Sorting order (ASC or DESC)
-   * @param completed - Filter by completed status
-   * @returns List of tasks and total count
+   * get a paginated list of tasks with optional sorting and filtering.
+   *
+   * @param page - The page number for pagination (starting from 1).
+   * @param pageSize - The number of tasks per page.
+   * @param sortBy - The field to sort by (title or created_at) default value is created_at.
+   * @param sortOrder - The sorting order (ASC or DESC or optional).
+   * @param completed - Filter tasks by completion status (optional).
+   * @returns An object containing paginated tasks(id,title,description,completed,created_at,updated_at,deleted_at),total count,current page, the size of each page.
    */
   async getAllTasks(
     page: number,
@@ -19,72 +26,65 @@ export class TaskService {
     sortOrder?: string,
     completed?: boolean
   ) {
-    try {
-      const offset = (page - 1) * pageSize;
+    const offset = (page - 1) * pageSize;
 
-      // Build options object for findAll
-      const options: any = {
-        limit: pageSize,
-        offset: offset,
-        order: sortBy && sortOrder ? [[sortBy, sortOrder]] : [],
-        where: completed !== undefined ? { completed } : {},
-      };
-
-      const tasks = await Task.findAndCountAll(options);
-      return tasks;
-    } catch (error) {
-      throw new Error((error as Error).message);
+    const options: any = {
+      limit: pageSize,
+      offset: offset,
+      order: sortBy && sortOrder ? [[sortBy, sortOrder]] : [],
+    };
+    if (completed != undefined) {
+      options.where = { completed };
     }
+
+    const tasks = await Task.findAndCountAll(options);
+
+    return {
+      totalPage: Math.ceil(tasks.count / pageSize),
+      page: page,
+      count: tasks.count,
+      data: tasks.rows,
+    };
   }
 
   /**
    * Create a new task.
-   * @param title - Task title
-   * @param description - Task description
-   * @param completed - Completion status
-   * @returns Created task object
+   *
+   * @param taskToCreate - Object containing title(required string), description(required string), and completion(optional boolean) status.
+   * @returns Created task object.
    */
-  async createTask(title: string, description: string, completed: boolean) {
-    try {
-      return await Task.create({ title, description, completed });
-    } catch (error) {
-      throw new Error((error as Error).message);
-    }
+  async createTask(taskToCreate: TaskRequestBody) {
+    const task = await Task.create(taskToCreate);
+    return { message: TASK_SUCCESSFULLY_CREATED, data: task };
   }
 
   /**
    * Get a specific task by ID.
    * @param id - Task ID
-   * @returns Task object or null if not found
+   * @returns Single Task object or null if not found
    */
   async getTaskById(id: string) {
-    try {
-      return await Task.findByPk(id);
-    } catch (error) {
-      throw new Error((error as Error).message);
-    }
+    return await Task.findByPk(id);
   }
 
   /**
    * Update a task by ID.
    * @param id - Task ID
-   * @param updatedTask - Updated task data
+   * @param updatedTask - Updated task data an object containing title(required string), description(required string), and completion(optional boolean) status
    * @returns Updated task object or null if not found
    */
-  async updateTask(id: string, updatedTask: object) {
-    try {
-      const [updatedRowCount, updatedTasks] = await Task.update(updatedTask, {
-        where: { id },
-        returning: true,
-      });
-      if (updatedRowCount > 0) {
-        return updatedTasks[0];
-      } else {
-        throw new Error("Task not found");
-      }
-    } catch (error) {
-      throw new Error((error as Error).message);
+  async updateTask(id: string, updatedTask: TaskRequestBody) {
+    const [updatedRowCount, updatedTasks] = await Task.update(updatedTask, {
+      where: { id },
+      returning: true,
+    });
+    if (updatedRowCount === 0) {
+      throw new Error(TASK_NOT_FOUND);
     }
+    return {
+      message: TASK_SUCCESSFULLY_UPDATED,
+      data: updatedTasks[0],
+    };
   }
 
   /**
@@ -93,17 +93,13 @@ export class TaskService {
    * @returns Success message or null if not found
    */
   async deleteTask(id: string) {
-    try {
-      const deletedRowCount = await Task.destroy({
-        where: { id },
-      });
-      if (deletedRowCount > 0) {
-        return { message: "Task deleted successfully" };
-      } else {
-        throw new Error("Task not found");
-      }
-    } catch (error) {
-      throw new Error((error as Error).message);
+    const deletedRowCount = await Task.destroy({
+      where: { id },
+    });
+    if (deletedRowCount === 0) {
+      throw new Error(TASK_NOT_FOUND);
     }
+
+    return { message: TASK_SUCCESSFULLY_DELETED };
   }
 }
