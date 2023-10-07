@@ -13,7 +13,6 @@ import {
 import { Task } from "../interfaces/taskIntefaces";
 import getErrorMessagesFromValidationResult from "../helper/generalFunc";
 import { TASK_NOT_FOUND } from "../const/message";
-import { validationResult } from "express-validator";
 
 const taskService = new TaskService();
 
@@ -111,8 +110,9 @@ export class TaskController {
       const task = await taskService.getTaskById(id);
       if (!task) {
         res.status(404).json({ message: TASK_NOT_FOUND });
+      } else {
+        res.json(task);
       }
-      res.json(task);
     } catch (error) {
       next(error);
     }
@@ -129,14 +129,22 @@ export class TaskController {
     next: NextFunction
   ) {
     const validationResultMessage = getErrorMessagesFromValidationResult(req);
+
+    const id = req.params.id;
+    const taskToUpdate = req.body;
+
     if (validationResultMessage) {
       return res.status(400).json({ message: validationResultMessage[0] });
     }
-    const id = req.params.id;
-    const updatedTask = req.body;
+
     try {
-      const task = await taskService.updateTask(id, updatedTask);
-      res.json(task);
+      const task = await taskService.getTaskById(id);
+      if (!task) {
+        res.status(404).json({ message: TASK_NOT_FOUND });
+      } else {
+        const updatedTask = await taskService.updateTask(id, taskToUpdate);
+        res.json(updatedTask);
+      }
     } catch (error) {
       next(error);
     }
@@ -145,7 +153,7 @@ export class TaskController {
   /**
    * Delete a task by ID.
    * @param req - request object with task ID in params
-   * @param res - Express response object
+   * @param res - response object
    */
   async deleteTask(
     req: Request<{ id: string }>,
@@ -153,9 +161,15 @@ export class TaskController {
     next: NextFunction
   ) {
     const id = req.params.id;
+
     try {
-      const result = await taskService.deleteTask(id);
-      res.json(result);
+      const task = await taskService.getTaskById(id);
+      if (!task) {
+        res.status(404).json({ message: TASK_NOT_FOUND });
+      } else {
+        const result = await taskService.deleteTask(id);
+        res.json(result);
+      }
     } catch (error) {
       next(error);
     }

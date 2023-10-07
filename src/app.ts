@@ -19,10 +19,8 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   errorHandler(err, req, res, next);
 });
 
-sequelize.sync().then(() => {
-  app.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
-  });
+app.listen(port, () => {
+  console.log(`Server running at http://localhost:${port}`);
 });
 
 export default app;

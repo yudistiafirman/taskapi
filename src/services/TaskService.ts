@@ -41,7 +41,7 @@ export class TaskService {
 
     return {
       totalPage: Math.ceil(tasks.count / pageSize),
-      page: page,
+      page: Number(page),
       count: tasks.count,
       data: tasks.rows,
     };
