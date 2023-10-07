@@ -3,7 +3,6 @@ import cors from "cors";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import v1Router from "./routes/v1";
 import { NextFunction, Request, Response } from "express";
-const { sequelize } = require("./models");
 
 const app = express();
 const port = 3000;
