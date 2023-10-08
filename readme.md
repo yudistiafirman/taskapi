@@ -85,11 +85,7 @@ module.exports = {
    - To start the application, use the following command:
         ```bash
      npm test
-7. **Run Test::**
 
-   - To start the application, use the following command:
-        ```bash
-     npm test
 
 **NOTE::**
 
