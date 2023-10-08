@@ -6,7 +6,6 @@
   "scripts": {
     "start": "ts-node src/app.ts",
     "start:prod": "node src/app.js",
-    "dev:migrate": "dotenv -e .env.dev npx sequelize db:migrate",
     "build": "npx rimraf ./dist && npm run compile && npm run copy-assets",
     "compile": "npx tsc",
     "copy-assets": "npx copyfiles --all -e \"./.git/**/*\" -e \"./node_modules/**/*\" -e \"./dist/**/*\" -e \"./**/*.{ts,tsx}\" \"./**/*\" ./dist",
