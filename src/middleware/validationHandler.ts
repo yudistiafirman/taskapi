@@ -1,14 +1,20 @@
 import { body } from "express-validator";
+import {
+  DESCRIPTION_MUST_STRING,
+  DESCRIPTION_REQUIRED,
+  TITLE_MUST_STRING,
+  TITLE_REQUIRED,
+} from "../const/message";
 
 export const validateTask = [
   body("title")
     .notEmpty()
-    .withMessage("Title is required")
+    .withMessage(TITLE_REQUIRED)
     .isString()
-    .withMessage("Title must be a string"),
+    .withMessage(TITLE_MUST_STRING),
   body("description")
     .notEmpty()
-    .withMessage("Description is required")
+    .withMessage(DESCRIPTION_REQUIRED)
     .isString()
-    .withMessage("Description must be a string"),
+    .withMessage(DESCRIPTION_MUST_STRING),
 ];
