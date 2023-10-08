@@ -5,9 +5,9 @@ import {
   TASK_SUCCESSFULLY_UPDATED,
 } from "../src/const/message";
 import app from "../src/app";
-const chai = require("chai");
-const chaiHttp = require("chai-http");
-const { expect } = require("chai");
+import chai from "chai";
+import chaiHttp from "chai-http";
+import { expect } from "chai";
 
 chai.use(chaiHttp);
 chai.should();
